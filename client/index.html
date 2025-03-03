@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voting System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: #f5f7fb;
+            color: #333;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        #currentAccount {
+            background: #eef2ff;
+            padding: 0.75rem;
+            border-radius: 8px;
+            color: #4f46e5;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        #candidates {
+            margin: 2rem 0;
+        }
+
+        #candidates h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        #candidates ul {
+            list-style: none;
+        }
+
+        #candidates li {
+            background: #fff;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .voting-section {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus {
+            border-color: #4f46e5;
+        }
+
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: #4338ca;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #status {
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #status:not(:empty) {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        #status:contains("Error") {
+            color: #dc2626;
+            background-color: #fef2f2;
+            border-color: #fee2e2;
+        }
+
+        #status:contains("Success") {
+            color: #059669;
+            background-color: #ecfdf5;
+            border-color: #d1fae5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Blockchain Voting</h1>
+        <p id="currentAccount"></p>
+        <div id="candidates"></div>
+        <div class="voting-section">
+            <input type="number" id="candidateIndex" placeholder="Candidate Index (0-2)">
+            <button onclick="vote()">Vote</button>
+        </div>
+        <p id="status"></p>
+        <p id="currentAccount"></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script>
+        const contractAddress = "0x35bde69DC35C55Bde9dca7ADe4531148EE62BB57"; // Replace with address from truffle migrate
+        const abi = [
+    {
+      "inputs": [
+        {
+          "internalType": "string[]",
+          "name": "candidateNames",
+          "type": "string[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "admin",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "candidates",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "voteCount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "voters",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "candidateIndex",
+          "type": "uint256"
+        }
+      ],
+      "name": "vote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "index",
+          "type": "uint256"
+        }
+      ],
+      "name": "getCandidate",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "voteCount",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct Voting.CandidateDetails",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true
+    },
+    {
+      "inputs": [],
+      "name": "getCandidateCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true
+    }
+  ];
+
+        let web3;
+        let contract;
+
+        async function initializeWeb3() {
+            if (window.ethereum && window.ethereum.isMetaMask) {
+                web3 = new Web3(window.ethereum);
+                contract = new web3.eth.Contract(abi, contractAddress);
+            } else {
+                document.getElementById("status").innerText = "Please install MetaMask";
+            }
+        }
+
+        async function loadCandidates() {
+            const count = await contract.methods.getCandidateCount().call();
+            let html = "<h2>Candidates:</h2><ul>";
+            for (let i = 0; i < count; i++) {
+                const [name, votes] = await contract.methods.getCandidate(i).call();
+                html += `<li>${name}: ${votes} votes</li>`;
+            }
+            html += "</ul>";
+            document.getElementById("candidates").innerHTML = html;
+        }
+
+        async function vote() {
+            try {
+                // Check if MetaMask is present
+                if (!window.ethereum || !window.ethereum.isMetaMask) {
+                    document.getElementById("status").innerText = "Error: Please install MetaMask";
+                    return;
+                }
+
+                const index = document.getElementById("candidateIndex").value;
+                
+                // Get current active account from MetaMask specifically
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                const currentAccount = accounts[0];
+                
+                if (!currentAccount) {
+                    document.getElementById("status").innerText = "Error: No MetaMask account connected";
+                    return;
+                }
+                
+                // Check if voter has already voted
+                const hasVoted = await contract.methods.voters(currentAccount).call();
+                
+                if (hasVoted) {
+                    document.getElementById("status").innerText = "Error: This account has already voted!";
+                    return;
+                }
+                
+                // Proceed with voting if not voted
+                await contract.methods.vote(index).send({ 
+                    from: currentAccount,
+                    // Add gas limit to ensure MetaMask handles the transaction
+                    gas: 200000
+                });
+                
+                document.getElementById("status").innerText = "Vote cast successfully!";
+                await loadCandidates();
+            } catch (error) {
+                console.error("Voting error:", error);
+                document.getElementById("status").innerText = "Error: " + (error.message || "Something went wrong. Please try again.");
+            }
+        }
+
+        // Add MetaMask account change listener
+        async function setupWeb3() {
+            try {
+                // First check if MetaMask is installed
+                if (typeof window.ethereum === 'undefined') {
+                    document.getElementById("status").innerText = "Error: Please install MetaMask";
+                    return;
+                }
+
+                await initializeWeb3();
+                
+                try {
+                    // Request account access
+                    await window.ethereum.request({ 
+                        method: 'eth_requestAccounts' 
+                    });
+                } catch (connectError) {
+                    document.getElementById("status").innerText = "Error: Please connect your MetaMask wallet";
+                    return;
+                }
+
+                // Set up event listeners for account and network changes
+                window.ethereum.on('accountsChanged', async (accounts) => {
+                    await displayCurrentAccount();
+                    document.getElementById("status").innerText = "Account changed";
+                    await loadCandidates();
+                });
+
+                window.ethereum.on('chainChanged', (_chainId) => {
+                    window.location.reload();
+                });
+                
+                // Load initial data
+                await displayCurrentAccount();
+                await loadCandidates();
+                
+                document.getElementById("status").innerText = "Connected to MetaMask";
+            } catch (error) {
+                console.error("Setup error:", error);
+                document.getElementById("status").innerText = "Error: " + error.message;
+            }
+        }
+
+        // Update displayCurrentAccount function
+        async function displayCurrentAccount() {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            const currentAccount = accounts[0] || 'No account connected';
+            document.getElementById("currentAccount").innerText = `Current Account: ${currentAccount}`;
+        }
+
+        // Update window.onload
+        window.onload = async () => {
+            try {
+                await setupWeb3();
+            } catch (error) {
+                console.error("Initialization error:", error);
+                document.getElementById("status").innerText = "Error initializing application";
+            }
+        };
+    </script>
+</body>
+</html>
